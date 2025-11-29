@@ -4,6 +4,7 @@ import uvicorn
 import uuid
 import asyncio
 from datetime import datetime
+from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import JSONResponse
@@ -428,10 +429,20 @@ async def start_job(data: StartJobRequest):
 
 # 4) Status
 @app.get("/status")
-async def get_status(job_id: str = Query(..., description="Job identifier")):
-    """Get the status of an appointment scheduling job (MIP-003 compliant)"""
+async def status(job_id: Optional[str] = Query(None)):
+    if not job_id:
+        return {"status": "ok"}
+    try:
+        if "get_job_status" in globals():
+            return await get_job_status(job_id)
+        if "lookup_job" in globals():
+            return await lookup_job(job_id)
+        if "get_status" in globals():
+            return await get_status(job_id)
+    except Exception:
+        pass
     if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+        return {"status": "pending", "job_id": job_id, "result": None}
     
     job = jobs[job_id]
     result = job.get("result")

@@ -1,8 +1,27 @@
 fastapi
 uvicorn
 python-dotenv
-crewai
+crewai[azure-ai-inference]
 masumi
 pydantic
 python-multipart
 httpx
+jsonschema
+python-dateutil
+PyPDF2
+pdfplumber
+langchain-openai
+langchain-core
+crewai-tools
+requests
+
+# Supabase integration
+# Note: Using httpx for Supabase REST API (no additional package needed)
+# For Supabase Python client (optional): supabase
+
+# Database drivers (install as needed based on your DB type):
+# PostgreSQL (required for Supabase): asyncpg
+asyncpg
+# MySQL: aiomysql
+# SQLite: aiosqlite
+# MongoDB: motor

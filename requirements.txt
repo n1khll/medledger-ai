@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-dotenv
 crewai[azure-ai-inference]
 masumi
@@ -9,6 +9,7 @@ httpx
 jsonschema
 python-dateutil
 PyPDF2
+pdfminer.six
 pdfplumber
 langchain-openai
 langchain-core

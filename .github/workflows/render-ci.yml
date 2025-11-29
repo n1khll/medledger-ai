@@ -1,0 +1,118 @@
+name: Render CI and Deploy
+
+on:
+
+  push:
+
+    branches:
+
+      - main
+
+jobs:
+
+  test-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    env:
+
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+
+      - name: Checkout
+
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+
+        uses: actions/setup-python@v4
+
+        with:
+
+          python-version: '3.11'
+
+      - name: Install dependencies
+
+        run: |
+
+          python -m pip install --upgrade pip
+
+          pip install -r requirements.txt
+
+      - name: Run minimal smoke tests (import modules)
+
+        run: |
+
+          python - <<'PY'
+
+import importlib
+
+modules = [
+
+    "agents.explain.main",
+
+    "agents.appointment.appointment_main"
+
+]
+
+for m in modules:
+
+    try:
+
+        importlib.import_module(m)
+
+        print(f"OK import {m}")
+
+    except Exception as e:
+
+        print(f"FAILED import {m}: {e}")
+
+        raise
+
+PY
+
+      - name: Trigger Render Deploy for Explain service
+
+        if: success()
+
+        env:
+
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_EXPLAIN }}
+
+        run: |
+
+          curl -sS -X POST "https://api.render.com/deploy/srv-${RENDER_SERVICE_ID}/deploys" \
+
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+
+            -H "Content-Type: application/json" \
+
+            -d '{"clearCache":true}' \
+
+            || (echo "Render deploy (explain) API call failed" && exit 1)
+
+      - name: Trigger Render Deploy for Appointment service
+
+        if: success()
+
+        env:
+
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_APPOINTMENT }}
+
+        run: |
+
+          curl -sS -X POST "https://api.render.com/deploy/srv-${RENDER_SERVICE_ID}/deploys" \
+
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+
+            -H "Content-Type: application/json" \
+
+            -d '{"clearCache":true}' \
+
+            || (echo "Render deploy (appointment) API call failed" && exit 1)
+

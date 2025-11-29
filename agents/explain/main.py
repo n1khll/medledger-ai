@@ -965,14 +965,9 @@ async def mock_payment_confirm(data: MockPaymentConfirmRequest):
 # ─────────────────────────────────────────────────────────────────────────────
 # 8) Health Check
 # ─────────────────────────────────────────────────────────────────────────────
-@app.get("/health")
+@app.get("/health", tags=["health"])
 async def health():
-    """
-    Returns the health of the server.
-    """
-    return {
-        "status": "healthy"
-    }
+    return {"status": "ok"}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 9) Doctor Validation Endpoints (NEW)

@@ -714,17 +714,9 @@ async def get_appointments(patient_wallet: str = Query(..., description="Patient
 # ─────────────────────────────────────────────────────────────────────────────
 # Health Check
 # ─────────────────────────────────────────────────────────────────────────────
-@app.get("/health")
+@app.get("/health", tags=["health"])
 async def health():
-    """Health check endpoint"""
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "healthy",
-            "agent": "Appointment Scheduling Agent",
-            "timestamp": int(datetime.utcnow().timestamp())
-        }
-    )
+    return {"status": "ok"}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main Entry Point

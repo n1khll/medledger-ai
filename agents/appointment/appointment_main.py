@@ -344,10 +344,51 @@ async def start_job(data: StartJobRequest):
                     output_hash=output_hash,
                     result_summary=result.get("message", "Appointment processing completed")
                 )
+                
+                # Return MIP-003 compliant response with result (immediate completion)
+                response = {
+                    "id": job_id,
+                    "job_id": job_id,
+                    "status": "success",  # MIP-003 requires "success" or "error"
+                    "blockchainIdentifier": "",  # Empty if no payment
+                    "payByTime": 0,  # 0 if no payment required
+                    "submitResultTime": 0,  # 0 if no payment required
+                    "unlockTime": 0,  # 0 if no payment required
+                    "externalDisputeUnlockTime": 0,  # 0 if no payment required
+                    "agentIdentifier": agent_identifier or "",
+                    "sellerVKey": os.getenv("SELLER_VKEY", ""),
+                    "identifierFromPurchaser": data.identifier_from_purchaser,
+                    "input_hash": input_hash,
+                    # Additional fields for immediate completion (not in MIP-003 but useful)
+                    "result": result,  # Include the appointment details directly
+                    "output_hash": output_hash
+                }
+                logger.info(f"Job {job_id} completed successfully")
+                return JSONResponse(status_code=200, content=response)
+                
             except Exception as e:
                 logger.error(f"Processing failed: {str(e)}", exc_info=True)
                 jobs[job_id]["status"] = "failed"
                 jobs[job_id]["error"] = str(e)
+                # Return error response in MIP-003 format
+                response = {
+                    "id": job_id,
+                    "job_id": job_id,
+                    "status": "error",  # MIP-003: "error" for failed jobs
+                    "blockchainIdentifier": "",
+                    "payByTime": 0,
+                    "submitResultTime": 0,
+                    "unlockTime": 0,
+                    "externalDisputeUnlockTime": 0,
+                    "agentIdentifier": agent_identifier or "",
+                    "sellerVKey": os.getenv("SELLER_VKEY", ""),
+                    "identifierFromPurchaser": data.identifier_from_purchaser,
+                    "input_hash": input_hash,
+                }
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to process appointment request: {str(e)}"
+                )
         else:
             # Set up payment monitoring
             async def payment_callback(blockchain_identifier: str):
@@ -360,11 +401,11 @@ async def start_job(data: StartJobRequest):
         # Get payment info from response
         payment_info = payment_info if payment else {}
         
-        # Return MIP-003 compliant response
+        # Return MIP-003 compliant response (payment required)
         response = {
             "id": job_id,
             "job_id": job_id,
-            "status": jobs[job_id]["status"],
+            "status": "success",  # MIP-003: "success" or "error" (job creation successful, payment pending)
             "blockchainIdentifier": blockchain_identifier or "",
             "payByTime": epoch_or_default(payment_info.get("payByTime")),
             "submitResultTime": epoch_or_default(payment_info.get("submitResultTime")),
@@ -691,14 +732,19 @@ async def health():
 if __name__ == "__main__":
     import sys
     
+    # Railway and other platforms provide PORT env var
+    port = int(os.environ.get("PORT", os.environ.get("API_PORT", 8001)))
+    # Railway requires 0.0.0.0 for external access
+    host = os.environ.get("API_HOST", os.environ.get("HOST", "0.0.0.0"))
+    
     print("\n" + "=" * 70)
     print("🚀 Starting Appointment Scheduling Agent API Server...")
     print("=" * 70)
-    print(f"API Documentation:        http://127.0.0.1:8001/docs")
-    print(f"Start Job Endpoint:       http://127.0.0.1:8001/start_job")
-    print(f"Availability Check:       http://127.0.0.1:8001/availability")
-    print(f"Status Check:             http://127.0.0.1:8001/status")
-    print(f"Input Schema:             http://127.0.0.1:8001/input_schema")
+    print(f"API Documentation:        http://{host}:{port}/docs")
+    print(f"Start Job Endpoint:       http://{host}:{port}/start_job")
+    print(f"Availability Check:       http://{host}:{port}/availability")
+    print(f"Status Check:             http://{host}:{port}/status")
+    print(f"Input Schema:             http://{host}:{port}/input_schema")
     print("\n💡 This agent schedules medical appointments based on user requests")
     print("💡 Uses LLM to understand natural language and find nearby hospitals")
     print("=" * 70 + "\n")
@@ -709,8 +755,8 @@ if __name__ == "__main__":
     # Run the server
     uvicorn.run(
         app,
-        host="127.0.0.1",
-        port=8001,
+        host=host,
+        port=port,
         reload=False,
         log_level="info"
     )

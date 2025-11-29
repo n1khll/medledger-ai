@@ -130,12 +130,10 @@ def get_input_schema() -> Dict[str, Any]:
     Get the MIP-003 compliant input schema for the Appointment Agent.
     
     Returns:
-        Input schema dictionary following MIP-003 format
+        Input schema dictionary following MIP-003 format (input_data array)
     """
+    # MIP-003 format: Return input_data array, not JSON Schema
     return {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AppointmentAgentInput",
-        "type": "object",
         "input_data": [
             {
                 "id": "user_request",
@@ -143,36 +141,45 @@ def get_input_schema() -> Dict[str, Any]:
                 "name": "Appointment Request",
                 "data": {
                     "description": "Describe your appointment need in plain English (e.g., 'I need to see a cardiologist next week', 'Schedule a general checkup')"
-                }
+                },
+                "validations": [
+                    {"validation": "required"}
+                ]
             },
             {
                 "id": "pincode",
                 "type": "string",
                 "name": "Pincode/ZIP Code",
+                "data": {
+                    "description": "Your pincode/ZIP code for finding nearby hospitals (5-6 digits)"
+                },
                 "validations": [
+                    {"validation": "required"},
                     {
                         "validation": "pattern",
                         "value": "^[0-9]{5,6}$"
                     }
-                ],
-                "data": {
-                    "description": "Your pincode/ZIP code for finding nearby hospitals"
-                }
+                ]
             },
             {
                 "id": "patient_info",
-                "type": "object",
+                "type": "none",  # Complex object - use "none" type per MIP-003
                 "name": "Patient Information",
                 "data": {
-                    "description": "Patient details including name, age, and location",
-                    "properties": {
-                        "name": {"type": "string", "required": True},
-                        "age": {"type": "integer", "required": True},
-                        "location": {"type": "string", "required": True}
-                    }
+                    "description": "Patient details object with name (string), age (integer), location (string), and optional fields like dob, symptoms, preferred_date, phone, email"
+                },
+                "validations": [
+                    {"validation": "required"}
+                ]
+            },
+            {
+                "id": "hospital_id",
+                "type": "string",
+                "name": "Hospital ID",
+                "data": {
+                    "description": "Optional: Specific hospital ID if you want to book at a particular hospital"
                 }
             }
-        ],
-        "additionalProperties": False
+        ]
     }
 

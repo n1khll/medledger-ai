@@ -330,12 +330,23 @@ async def start_job(data: StartJobRequest):
                     result_summary=result.get("summary", "Processing completed")
                 )
                 
-                # Return simplified response with analysis results directly
+                # Return MIP-003 compliant response (even without payment, all fields required)
+                # Include result in response for immediate completion
                 response = {
+                    "id": job_id,
                     "job_id": job_id,
-                    "status": "completed",
-                    "result": result,  # Include the explanation directly
+                    "status": "success",  # MIP-003 requires "success" or "error"
+                    "blockchainIdentifier": "",  # Empty if no payment
+                    "payByTime": 0,  # 0 if no payment required
+                    "submitResultTime": 0,  # 0 if no payment required
+                    "unlockTime": 0,  # 0 if no payment required
+                    "externalDisputeUnlockTime": 0,  # 0 if no payment required
+                    "agentIdentifier": agent_identifier or "",
+                    "sellerVKey": os.getenv("SELLER_VKEY", ""),
+                    "identifierFromPurchaser": data.identifier_from_purchaser,
                     "input_hash": input_hash,
+                    # Additional fields for immediate completion (not in MIP-003 but useful)
+                    "result": result,  # Include the explanation directly
                     "output_hash": output_hash
                 }
                 
@@ -364,14 +375,14 @@ async def start_job(data: StartJobRequest):
             response = {
                 "id": job_id,
                 "job_id": job_id,
-                "status": "awaiting_payment",
+                "status": "success",  # MIP-003: "success" or "error" (job creation successful, payment pending)
                 "blockchainIdentifier": blockchain_identifier,
                 "payByTime": epoch_or_default(payment_info.get("payByTime")),
                 "submitResultTime": epoch_or_default(payment_info.get("submitResultTime")),
                 "unlockTime": epoch_or_default(payment_info.get("unlockTime")),
                 "externalDisputeUnlockTime": epoch_or_default(payment_info.get("externalDisputeUnlockTime")),
                 "agentIdentifier": agent_identifier,
-                "sellerVKey": os.getenv("SELLER_VKEY"),
+                "sellerVKey": os.getenv("SELLER_VKEY", ""),
                 "identifierFromPurchaser": data.identifier_from_purchaser,
                 "input_hash": input_hash,
             }
@@ -801,37 +812,40 @@ async def input_schema():
     - Send the extracted plain text as the record_text string field
     - Do NOT send base64 encoded files - extract text first
     """
+    # MIP-003 format: Return input_data array, not JSON Schema
     return {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ExplainAgentInput",
-        "type": "object",
-        "required": ["patient_id", "record_text"],
-        "properties": {
-            "patient_id": {
+        "input_data": [
+            {
+                "id": "patient_id",
                 "type": "string",
-                "description": "Patient identifier"
-            },
-            "record_text": {
-                "type": "string",
-                "description": "Medical record text extracted from PDF/image. Frontend should extract text and send as plain text string."
-            },
-            "metadata": {
-                "type": "object",
-                "description": "Optional metadata about the record",
-                "properties": {
-                    "timestamp": {
-                        "type": "integer",
-                        "description": "Unix timestamp"
-                    },
-                    "source": {
-                        "type": "string",
-                        "description": "Source of the record (e.g., 'web_upload', 'clinic_visit')"
-                    }
+                "name": "Patient ID",
+                "data": {
+                    "description": "Unique identifier for the patient"
                 },
-                "additionalProperties": True
+                "validations": [
+                    {"validation": "required"}
+                ]
+            },
+            {
+                "id": "record_text",
+                "type": "string",
+                "name": "Medical Record Text",
+                "data": {
+                    "description": "Medical record text extracted from PDF/image. Frontend should extract text and send as plain text string. Do NOT send base64 encoded files."
+                },
+                "validations": [
+                    {"validation": "required"}
+                ]
+            },
+            {
+                "id": "metadata",
+                "type": "none",
+                "name": "Metadata",
+                "data": {
+                    "description": "Optional metadata about the record (timestamp, source, etc.)"
+                }
             }
-        },
-        "additionalProperties": False
+        ]
     }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1138,10 +1152,12 @@ if __name__ == "__main__":
         main()
     else:
         # Default: Run API mode
-        port = int(os.environ.get("API_PORT", 8000))
+        # Railway and other platforms provide PORT env var
+        port = int(os.environ.get("PORT", os.environ.get("API_PORT", 8000)))
         # Set host from environment variable, default to localhost for security.
         # Use host=0.0.0.0 to allow external connections (e.g., in Docker or production).
-        host = os.environ.get("API_HOST", "127.0.0.1")
+        # Railway requires 0.0.0.0 for external access
+        host = os.environ.get("API_HOST", os.environ.get("HOST", "0.0.0.0"))
 
         print("\n" + "=" * 70)
         print("🚀 Starting Explain Agent API Server...")

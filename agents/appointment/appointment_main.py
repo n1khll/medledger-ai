@@ -764,13 +764,6 @@ if __name__ == "__main__":
         log_level="info"
     )
 
-
-        logger.error(f"Error retrieving appointments: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve appointments: {str(e)}"
-        )
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Health Check
 # ─────────────────────────────────────────────────────────────────────────────

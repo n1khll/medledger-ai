@@ -126,7 +126,7 @@ class AppointmentCrew:
             os.environ["OPENAI_API_KEY"] = openai_api_key
             self.logger.info("OpenAI API configured")
             return True
-        return False
+            return False
     
     def _create_llm(self):
         """Create and return a standard OpenAI LLM instance."""

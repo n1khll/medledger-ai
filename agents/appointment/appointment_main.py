@@ -764,3 +764,52 @@ if __name__ == "__main__":
         log_level="info"
     )
 
+
+        logger.error(f"Error retrieving appointments: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve appointments: {str(e)}"
+        )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Health Check
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/health", tags=["health"])
+async def health():
+    return {"status": "ok"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Entry Point
+# ─────────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import sys
+    
+    # Railway and other platforms provide PORT env var
+    port = int(os.environ.get("PORT", os.environ.get("API_PORT", 8001)))
+    # Railway requires 0.0.0.0 for external access
+    host = os.environ.get("API_HOST", os.environ.get("HOST", "0.0.0.0"))
+    
+    print("\n" + "=" * 70)
+    print("🚀 Starting Appointment Scheduling Agent API Server...")
+    print("=" * 70)
+    print(f"API Documentation:        http://{host}:{port}/docs")
+    print(f"Start Job Endpoint:       http://{host}:{port}/start_job")
+    print(f"Availability Check:       http://{host}:{port}/availability")
+    print(f"Status Check:             http://{host}:{port}/status")
+    print(f"Input Schema:             http://{host}:{port}/input_schema")
+    print("\n💡 This agent schedules medical appointments based on user requests")
+    print("💡 Uses LLM to understand natural language and find nearby hospitals")
+    print("=" * 70 + "\n")
+    
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
+    # Run the server
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        reload=False,
+        log_level="info"
+    )
+

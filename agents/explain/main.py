@@ -36,21 +36,17 @@ load_dotenv(override=True)
 
 # Retrieve API Keys and URLs
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL")
 PAYMENT_API_KEY = os.getenv("PAYMENT_API_KEY")
 NETWORK = os.getenv("NETWORK")
 
-# Azure OpenAI Configuration
-AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-
 logger.info("Starting application with configuration:")
 logger.info(f"PAYMENT_SERVICE_URL: {PAYMENT_SERVICE_URL}")
-if AZURE_OPENAI_ENDPOINT:
-    logger.info(f"Azure OpenAI configured: {AZURE_OPENAI_ENDPOINT}")
-    logger.info(f"Azure OpenAI Deployment: {AZURE_OPENAI_DEPLOYMENT}")
+if OPENAI_API_KEY:
+    logger.info(f"OpenAI configured: Model {OPENAI_MODEL}")
+else:
+    logger.warning("OPENAI_API_KEY not set. LLM features will not work.")
 
 # Initialize FastAPI
 app = FastAPI(

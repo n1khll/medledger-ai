@@ -4,6 +4,7 @@ import uvicorn
 import uuid
 import asyncio
 from datetime import datetime
+from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import JSONResponse
@@ -428,10 +429,20 @@ async def start_job(data: StartJobRequest):
 
 # 4) Status
 @app.get("/status")
-async def get_status(job_id: str = Query(..., description="Job identifier")):
-    """Get the status of an appointment scheduling job (MIP-003 compliant)"""
+async def status(job_id: Optional[str] = Query(None)):
+    if not job_id:
+        return {"status": "ok"}
+    try:
+        if "get_job_status" in globals():
+            return await get_job_status(job_id)
+        if "lookup_job" in globals():
+            return await lookup_job(job_id)
+        if "get_status" in globals():
+            return await get_status(job_id)
+    except Exception:
+        pass
     if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+        return {"status": "pending", "job_id": job_id, "result": None}
     
     job = jobs[job_id]
     result = job.get("result")
@@ -714,17 +725,51 @@ async def get_appointments(patient_wallet: str = Query(..., description="Patient
 # ─────────────────────────────────────────────────────────────────────────────
 # Health Check
 # ─────────────────────────────────────────────────────────────────────────────
-@app.get("/health")
+@app.get("/health", tags=["health"])
 async def health():
-    """Health check endpoint"""
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "healthy",
-            "agent": "Appointment Scheduling Agent",
-            "timestamp": int(datetime.utcnow().timestamp())
-        }
+    return {"status": "ok"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Entry Point
+# ─────────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import sys
+    
+    # Railway and other platforms provide PORT env var
+    port = int(os.environ.get("PORT", os.environ.get("API_PORT", 8001)))
+    # Railway requires 0.0.0.0 for external access
+    host = os.environ.get("API_HOST", os.environ.get("HOST", "0.0.0.0"))
+    
+    print("\n" + "=" * 70)
+    print("🚀 Starting Appointment Scheduling Agent API Server...")
+    print("=" * 70)
+    print(f"API Documentation:        http://{host}:{port}/docs")
+    print(f"Start Job Endpoint:       http://{host}:{port}/start_job")
+    print(f"Availability Check:       http://{host}:{port}/availability")
+    print(f"Status Check:             http://{host}:{port}/status")
+    print(f"Input Schema:             http://{host}:{port}/input_schema")
+    print("\n💡 This agent schedules medical appointments based on user requests")
+    print("💡 Uses LLM to understand natural language and find nearby hospitals")
+    print("=" * 70 + "\n")
+    
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
+    # Run the server
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        reload=False,
+        log_level="info"
     )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Health Check
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/health", tags=["health"])
+async def health():
+    return {"status": "ok"}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main Entry Point

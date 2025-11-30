@@ -9,17 +9,12 @@ from shared.logging_config import get_logger
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew
 
-# Try to import Azure OpenAI LLM
+# Try to import standard OpenAI LLM
 try:
-    from langchain_openai import AzureChatOpenAI
-    AZURE_OPENAI_AVAILABLE = True
+    from langchain_openai import ChatOpenAI
+    OPENAI_AVAILABLE = True
 except ImportError:
-    AZURE_OPENAI_AVAILABLE = False
-    try:
-        from langchain_community.chat_models import AzureChatOpenAI
-        AZURE_OPENAI_AVAILABLE = True
-    except ImportError:
-        AZURE_OPENAI_AVAILABLE = False
+    OPENAI_AVAILABLE = False
 
 # Try to import tool decorator from different sources
 try:
@@ -100,123 +95,69 @@ if TOOL_AVAILABLE:
 class AppointmentCrew:
     """
     LLM-powered Appointment Scheduling Agent.
-    Uses Azure OpenAI to understand natural language requests and schedule appointments.
+    Uses standard OpenAI API to understand natural language requests and schedule appointments.
     
-    Configured with Azure OpenAI if environment variables are set:
-    - AZURE_OPENAI_API_KEY
-    - AZURE_OPENAI_ENDPOINT
-    - AZURE_OPENAI_API_VERSION
-    - AZURE_OPENAI_DEPLOYMENT
+    Configured with OPENAI_API_KEY environment variable.
     """
     
     def __init__(self, verbose=True, logger=None):
         self.verbose = verbose
         self.logger = logger or get_logger(__name__)
         
-        # Configure Azure OpenAI if available
-        self.azure_openai_configured = self._configure_azure_openai()
+        # Configure standard OpenAI
+        self.openai_configured = self._configure_openai()
         
-        if not self.azure_openai_configured:
-            self.logger.warning("Azure OpenAI not configured. LLM features will not work.")
-            self.logger.warning("Please set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, and AZURE_OPENAI_DEPLOYMENT")
+        if not self.openai_configured:
+            self.logger.warning("OpenAI not configured. LLM features will not work.")
+            self.logger.warning("Please set OPENAI_API_KEY environment variable")
         
         self.logger.info("AppointmentCrew initialized")
     
-    def _configure_azure_openai(self) -> bool:
+    def _configure_openai(self) -> bool:
         """
-        Configure Azure OpenAI for LangChain and CrewAI compatibility.
+        Configure standard OpenAI API.
         
         Returns:
-            True if Azure OpenAI is configured, False otherwise
+            True if standard OpenAI is configured, False otherwise
         """
-        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-        azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
         
-        if all([azure_api_key, azure_endpoint, azure_api_version, azure_deployment]):
-            # Set environment variables for CrewAI's native provider (if it tries to use them)
-            os.environ["AZURE_API_KEY"] = azure_api_key
-            os.environ["AZURE_ENDPOINT"] = azure_endpoint
-            os.environ["AZURE_API_VERSION"] = azure_api_version
-            os.environ["AZURE_DEPLOYMENT"] = azure_deployment
-            
-            # Also keep the original variables for LangChain
-            os.environ["AZURE_OPENAI_API_KEY"] = azure_api_key
-            os.environ["AZURE_OPENAI_ENDPOINT"] = azure_endpoint
-            os.environ["AZURE_OPENAI_API_VERSION"] = azure_api_version
-            os.environ["AZURE_OPENAI_DEPLOYMENT"] = azure_deployment
-            
-            self.logger.info(f"Azure OpenAI configured: {azure_endpoint}")
-            self.logger.info(f"Deployment: {azure_deployment}, API Version: {azure_api_version}")
-            self.logger.info("Using LangChain AzureChatOpenAI (CrewAI native provider env vars also set)")
+        if openai_api_key:
+            os.environ["OPENAI_API_KEY"] = openai_api_key
+            self.logger.info("OpenAI API configured")
             return True
-        else:
-            missing = []
-            if not azure_api_key:
-                missing.append("AZURE_OPENAI_API_KEY")
-            if not azure_endpoint:
-                missing.append("AZURE_OPENAI_ENDPOINT")
-            if not azure_api_version:
-                missing.append("AZURE_OPENAI_API_VERSION")
-            if not azure_deployment:
-                missing.append("AZURE_OPENAI_DEPLOYMENT")
-            
-            self.logger.warning(f"Azure OpenAI not fully configured. Missing: {', '.join(missing)}")
             return False
     
     def _create_llm(self):
-        """Create and return an Azure OpenAI LLM instance."""
-        if not self.azure_openai_configured:
-            raise ValueError("Azure OpenAI not configured. Cannot create LLM instance.")
+        """Create and return a standard OpenAI LLM instance."""
+        if not self.openai_configured:
+            raise ValueError("OpenAI not configured. Cannot create LLM instance. Please set OPENAI_API_KEY.")
         
-        if not AZURE_OPENAI_AVAILABLE:
+        if not OPENAI_AVAILABLE:
             raise ValueError(
                 "langchain-openai package not installed. "
                 "Install with: pip install langchain-openai"
             )
         
-        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-        azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-        
-        # Validate all required values
-        if not all([azure_api_key, azure_endpoint, azure_api_version, azure_deployment]):
-            missing = []
-            if not azure_api_key:
-                missing.append("AZURE_OPENAI_API_KEY")
-            if not azure_endpoint:
-                missing.append("AZURE_OPENAI_ENDPOINT")
-            if not azure_api_version:
-                missing.append("AZURE_OPENAI_API_VERSION")
-            if not azure_deployment:
-                missing.append("AZURE_OPENAI_DEPLOYMENT")
-            raise ValueError(f"Missing required Azure OpenAI configuration: {', '.join(missing)}")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY not set")
         
         try:
-            llm = AzureChatOpenAI(
-                azure_endpoint=azure_endpoint,
-                api_key=azure_api_key,
-                api_version=azure_api_version,
-                azure_deployment=azure_deployment,
+            # Use gpt-4o-mini as default (cost-effective), can be overridden via env var
+            model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            llm = ChatOpenAI(
+                model=model,
                 temperature=0.7,
-                verbose=self.verbose
+                verbose=self.verbose,
+                api_key=openai_api_key
             )
-            
-            self.logger.info(f"Created LangChain AzureChatOpenAI instance")
-            self.logger.info(f"  Endpoint: {azure_endpoint}")
-            self.logger.info(f"  Deployment: {azure_deployment}")
-            self.logger.info(f"  API Version: {azure_api_version}")
-            
+            self.logger.info(f"Created OpenAI ChatOpenAI instance")
+            self.logger.info(f"  Model: {model}")
             return llm
         except Exception as e:
-            self.logger.error(f"Failed to create Azure OpenAI LLM: {str(e)}")
-            raise ValueError(
-                f"Failed to initialize Azure OpenAI LLM. "
-                f"Please verify your deployment name '{azure_deployment}' exists in Azure. "
-                f"Error: {str(e)}"
-            )
+            self.logger.error(f"Failed to create OpenAI LLM: {str(e)}")
+            raise ValueError(f"Failed to initialize OpenAI LLM: {str(e)}")
     
     def _extract_specialty_from_request(self, user_request: str, llm) -> Optional[str]:
         """
@@ -358,8 +299,8 @@ Do not include any explanation, just the specialty name."""
     
     def _create_crew(self, user_request: str, pincode: str, patient_info: Optional[Dict] = None):
         """Create the CrewAI crew with agents and tasks for appointment scheduling."""
-        if not self.azure_openai_configured:
-            raise ValueError("Azure OpenAI not configured. Cannot create LLM-powered agent.")
+        if not self.openai_configured:
+            raise ValueError("OpenAI not configured. Cannot create LLM-powered agent. Please set OPENAI_API_KEY.")
         
         # Create the LLM instance explicitly
         llm = self._create_llm()
@@ -638,11 +579,8 @@ IMPORTANT:
         """
         self.logger.info(f"Processing appointment request: {user_request} for pincode: {pincode}")
         
-        if not self.azure_openai_configured:
-            raise ValueError(
-                "Azure OpenAI not configured. Please set AZURE_OPENAI_API_KEY, "
-                "AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, and AZURE_OPENAI_DEPLOYMENT"
-            )
+        if not self.openai_configured:
+            raise ValueError("OpenAI not configured. Please set OPENAI_API_KEY environment variable.")
         
         try:
             # Create crew for this specific request

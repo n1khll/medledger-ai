@@ -53,3 +53,28 @@ if __name__ == "__main__":
         log_level="info"
 
     )
+
+
+    print(f"Start Job Endpoint:       http://0.0.0.0:$PORT/start_job")
+
+    print(f"Status Check:             http://0.0.0.0:$PORT/status")
+
+    print("=" * 70 + "\n")
+
+    host = "0.0.0.0"
+
+    port = int(os.environ.get("PORT", 8001))
+
+    uvicorn.run(
+
+        app,
+
+        host=host,
+
+        port=port,
+
+        reload=False,
+
+        log_level="info"
+
+    )

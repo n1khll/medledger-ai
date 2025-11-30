@@ -9,20 +9,18 @@ httpx
 jsonschema
 python-dateutil
 PyPDF2
+langchain
 pdfminer.six
 pdfplumber
 langchain-openai
 langchain-core
+langchain-community
 crewai-tools
 requests
 
-# Supabase integration
-# Note: Using httpx for Supabase REST API (no additional package needed)
-# For Supabase Python client (optional): supabase
-
-# Database drivers (install as needed based on your DB type):
-# PostgreSQL (required for Supabase): asyncpg
-asyncpg
-# MySQL: aiomysql
-# SQLite: aiosqlite
-# MongoDB: motor
+# Supabase integration (for Medical Q&A chatbot)
+supabase
+llama-index==0.12.2
+psycopg2-binary
+# Note: We use direct psycopg2 connections for vector operations, not llama-index-vector-stores-supabase
+pgvector
